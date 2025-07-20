@@ -30,6 +30,26 @@ final officialVisualRegex = RegExp(
   caseSensitive: false,
 );
 
+final reactionRegex = RegExp(
+  r"(\b(react|reacts|reaction|reacting|first\s*time\s*(hearing|listening)|breakdown|vocal\s*coach|producer\s*reacts|analysis|review|lesson|how\s*to\s*play|tutorial|parody)\b|for\s+the\s+first\s+time|listening\s+to\s+.*?\bfirst\s*time\b)",
+  caseSensitive: false,
+);
+
+final coverRegex = RegExp(
+  r"\b(cover|covered\s+by|acoustic\s+cover|guitar\s+cover|drum\s+cover|piano\s+cover|vocal\s+cover|fingerstyle|tribute|fan\s+cover)\b",
+  caseSensitive: false,
+);
+
+final liveRegex = RegExp(
+  r"\b(live|concert|tour|live\s+at|live\s+in|live\s+from|unplugged|festival|sessions|on\s+mtv|bbc\s+session|tiny\s+desk|glastonbury|coachella|rock\s+in\s+rio)\b",
+  caseSensitive: false,
+);
+
+final alteredAudioRegex = RegExp(
+  r"\b(slowed|reverb|sped\s+up|speed\s+up|nightcore|8d\s+audio|bass\s+boost|bass\s+boosted|pitch\s+shift|clean\s+edit|tiktok\s+version|1\s+hour|10\s+hour|10\s+hours|hour\s+loop|loop|loops)\b",
+  caseSensitive: false,
+);
+
 final majorLabelRegex = RegExp(
   r"\b(warner|sony\s*music|universal\s*music|atlantic\s*records|interscope|columbia\s*records|epic\s*records|republic\s*records|capitol\s*records|def\s*jam|island\s*records|virgin\s*records|rca\s*records|polydor|spinnin|monstercat|sub\s*pop|epitaph|nuclear\s*blast|ultra\s*records|dirty\s*hit)\b",
   caseSensitive: false,
@@ -174,7 +194,22 @@ class SourcedTrack extends BasicSourcedTrack {
     final isBandLive =
         track.artists.any((a) => a.name.trim().toLowerCase() == "live");
 
-    // Intermediate: official ranking heuristics
+    final isTargetCover =
+        lowerTrackName.contains("cover") || lowerTrackName.contains("tribute");
+
+    final isTargetRemix =
+        lowerTrackName.contains("remix") || lowerTrackName.contains("mix");
+
+    final isTargetInstrumental = lowerTrackName.contains("karaoke") ||
+        lowerTrackName.contains("instrumental") ||
+        lowerTrackName.contains("backing track");
+
+    final isTargetAltered = lowerTrackName.contains("slowed") ||
+        lowerTrackName.contains("reverb") ||
+        lowerTrackName.contains("nightcore") ||
+        lowerTrackName.contains("sped up");
+
+    final isTargetReaction = reactionRegex.hasMatch(lowerTrackName);
 
     return results
         .map((sibling) {
@@ -182,7 +217,8 @@ class SourcedTrack extends BasicSourcedTrack {
           final lowerSiblingTitle = sibling.title.toLowerCase();
           final siblingNorm = _normalizeText(sibling.title);
 
-          const isActualReaction = false;
+          final hasReactionMarker = reactionRegex.hasMatch(lowerSiblingTitle);
+          final isActualReaction = hasReactionMarker && !isTargetReaction;
 
           var hasTopicBoost = false;
           var hasSameArtistBoost = false;
@@ -302,6 +338,35 @@ class SourcedTrack extends BasicSourcedTrack {
             if (sibling.duration > const Duration(minutes: 10)) {
               score -= 80;
             }
+          }
+
+          // Intent-aware Penalties vs Preferences
+          if (!isTargetCover && coverRegex.hasMatch(lowerSiblingTitle)) {
+            score -= 45;
+          }
+
+          if (!isTargetLive && !isBandLive && liveRegex.hasMatch(lowerSiblingTitle)) {
+            score -= 35;
+          } else if (isTargetLive && liveRegex.hasMatch(lowerSiblingTitle)) {
+            score += 15;
+          }
+
+          if (!isTargetInstrumental &&
+              (lowerSiblingTitle.contains("karaoke") ||
+                  lowerSiblingTitle.contains("instrumental"))) {
+            score -= 30;
+          }
+
+          if (!isTargetRemix && lowerSiblingTitle.contains("remix")) {
+            score -= 20;
+          }
+
+          if (!isTargetAltered && alteredAudioRegex.hasMatch(lowerSiblingTitle)) {
+            score -= 50;
+          }
+
+          if (isActualReaction) {
+            score -= 75;
           }
 
           return (sibling: sibling, score: score);
