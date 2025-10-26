@@ -30,6 +30,12 @@ abstract class KVStoreService {
   static Future<void> setRecentSearches(List<String> value) async =>
       await sharedPreferences.setStringList('recentSearches', value);
 
+  static String? get searchEngineMode =>
+      sharedPreferences.getString('searchEngineMode');
+
+  static Future<void> setSearchEngineMode(String value) async =>
+      await sharedPreferences.setString('searchEngineMode', value);
+
   static WindowSize? get windowSize {
     final raw = sharedPreferences.getString('windowSize');
 

@@ -386,6 +386,27 @@ class SourcedTrack extends BasicSourcedTrack {
       throw MetadataPluginException.noDefaultAudioSourcePlugin();
     }
 
+    final isDirectYouTube = query.externalUri.contains("youtube.com") ||
+        (query.id.length == 11 && !query.id.contains("-"));
+
+    if (isDirectYouTube) {
+      final uri = Uri.tryParse(query.externalUri);
+      final videoId = (uri != null && uri.queryParameters.containsKey("v"))
+          ? uri.queryParameters["v"]!
+          : query.id;
+
+      final directMatch = SpotubeAudioSourceMatchObject(
+        id: videoId,
+        title: query.name,
+        artists: query.artists.map((a) => a.name).toList(),
+        duration: Duration(milliseconds: query.durationMs),
+        thumbnail: query.album.images.firstOrNull?.url,
+        externalUri: "https://youtube.com/watch?v=$videoId",
+      );
+
+      return [directMatch];
+    }
+
     final searchResults = await audioSource.audioSource.matches(query);
 
     final rankedResults = rankResults(searchResults, query);

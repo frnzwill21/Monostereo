@@ -20,6 +20,7 @@ import 'package:spotube/pages/search/tabs/artists.dart';
 import 'package:spotube/pages/search/tabs/playlists.dart';
 import 'package:spotube/pages/search/tabs/tracks.dart';
 import 'package:spotube/provider/metadata_plugin/search/all.dart';
+import 'package:spotube/provider/search_engine/search_engine_provider.dart';
 import 'package:spotube/services/kv_store/kv_store.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:spotube/services/metadata/errors/exceptions.dart';
@@ -40,6 +41,7 @@ class SearchPage extends HookConsumerWidget {
     final focusNode = useFocusNode();
 
     final searchTerm = ref.watch(searchTermStateProvider);
+    final searchEngine = ref.watch(searchEngineModeProvider);
     final searchChipSnapshot = ref.watch(metadataPluginSearchChipsProvider);
     final selectedChip = useState<String?>(
       searchChipSnapshot.asData?.value.first ?? "all",
@@ -210,40 +212,95 @@ class SearchPage extends HookConsumerWidget {
                     ),
                   ],
                 ),
-                Row(
-                  spacing: 8,
-                  children: [
-                    const Gap(12),
-                    if (searchChipSnapshot.asData?.value != null)
-                      for (final chip in searchChipSnapshot.asData!.value)
-                        Chip(
-                          style: selectedChip.value == chip
-                              ? ButtonVariance.primary.copyWith(
-                                  decoration: (context, states, value) {
-                                    return ButtonVariance.primary
-                                        .decoration(context, states)
-                                        .copyWithIfBoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(100),
-                                        );
-                                  },
-                                )
-                              : ButtonVariance.secondary.copyWith(
-                                  decoration: (context, states, value) {
-                                    return ButtonVariance.secondary
-                                        .decoration(context, states)
-                                        .copyWithIfBoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(100),
-                                        );
-                                  },
-                                ),
-                          child: Text(chip.capitalize()),
-                          onPressed: () {
-                            selectedChip.value = chip;
-                          },
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      const Gap(12),
+                      Chip(
+                        style: searchEngine == SearchEngineMode.youtube
+                            ? ButtonVariance.primary.copyWith(
+                                decoration: (context, states, value) {
+                                  return ButtonVariance.primary
+                                      .decoration(context, states)
+                                      .copyWithIfBoxDecoration(
+                                        borderRadius:
+                                            BorderRadius.circular(100),
+                                      );
+                                },
+                              )
+                            : ButtonVariance.outline.copyWith(
+                                decoration: (context, states, value) {
+                                  return ButtonVariance.outline
+                                      .decoration(context, states)
+                                      .copyWithIfBoxDecoration(
+                                        borderRadius:
+                                            BorderRadius.circular(100),
+                                      );
+                                },
+                              ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              searchEngine == SearchEngineMode.youtube
+                                  ? SpotubeIcons.youtube
+                                  : SpotubeIcons.web,
+                              size: 14,
+                              color: searchEngine == SearchEngineMode.youtube
+                                  ? const Color(0xFFFF0000)
+                                  : null,
+                            ),
+                            const Gap(6),
+                            Text(
+                              searchEngine == SearchEngineMode.youtube
+                                  ? "YouTube"
+                                  : "MusicBrainz",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                  ],
+                        onPressed: () {
+                          ref
+                              .read(searchEngineModeProvider.notifier)
+                              .toggle();
+                        },
+                      ),
+                      if (searchChipSnapshot.asData?.value != null)
+                        for (final chip in searchChipSnapshot.asData!.value)
+                          Chip(
+                            style: selectedChip.value == chip
+                                ? ButtonVariance.primary.copyWith(
+                                    decoration: (context, states, value) {
+                                      return ButtonVariance.primary
+                                          .decoration(context, states)
+                                          .copyWithIfBoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(100),
+                                          );
+                                    },
+                                  )
+                                : ButtonVariance.secondary.copyWith(
+                                    decoration: (context, states, value) {
+                                      return ButtonVariance.secondary
+                                          .decoration(context, states)
+                                          .copyWithIfBoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(100),
+                                          );
+                                    },
+                                  ),
+                            child: Text(chip.capitalize()),
+                            onPressed: () {
+                              selectedChip.value = chip;
+                            },
+                          ),
+                      const Gap(12),
+                    ],
+                  ),
                 ),
                 Expanded(
                   child: AnimatedSwitcher(
