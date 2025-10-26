@@ -54,6 +54,16 @@ class SearchPageTracksTab extends HookConsumerWidget {
             child: TrackTile(track: FakeData.track, playlist: playlist),
           );
         },
+        emptyBuilder: (context) {
+          return Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Center(
+              child: Text(
+                context.l10n.nothing_found,
+              ),
+            ),
+          );
+        },
         onFetchData: () {
           searchTracksNotifier.fetchMore();
         },

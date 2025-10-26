@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:auto_route/auto_route.dart';
 import 'package:hetu_otp_util/hetu_otp_util.dart';
 import 'package:hetu_script/hetu_script.dart';
+import 'package:hetu_script/values.dart';
+import 'package:hetu_script/binding.dart';
 import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart' as spotube_plugin;
 import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
     hide YouTubeEngine;
@@ -42,6 +44,11 @@ class MetadataPlugin {
 
     final hetu = Hetu();
     hetu.init();
+
+    hetu.interpreter.bindExternalClass(
+      _PatchedFutureClassBinding(),
+      override: true,
+    );
 
     HetuStdLoader.loadBindings(hetu);
     HetuSpotubePluginLoader.loadBindings(
@@ -139,6 +146,20 @@ class MetadataPlugin {
     await HetuOtpUtilLoader.loadBytecodeFlutter(hetu);
     await HetuSpotubePluginLoader.loadBytecodeFlutter(hetu);
 
+    hetu.interpreter.bindExternalClass(
+      _PatchedFutureClassBinding(),
+      override: true,
+    );
+    hetu.eval('''
+      external class Future {
+        construct (callback: any)
+        static fun wait(futures: any)
+        static fun value(val: any)
+        fun then(callback: any)
+        fun catchError(callback: any)
+      }
+    ''');
+
     hetu.loadBytecode(bytes: byteCode, moduleName: "plugin");
     hetu.eval("""
       import "module:plugin" as plugin
@@ -179,3 +200,65 @@ class MetadataPlugin {
     core = MetadataPluginCore(hetu);
   }
 }
+
+class _PatchedFutureClassBinding extends HTExternalClass {
+  _PatchedFutureClassBinding() : super('Future');
+
+  @override
+  dynamic memberGet(String varName, {String? from}) {
+    switch (varName) {
+      case 'Future':
+        return (HTEntity entity,
+            {List<dynamic> positionalArgs = const [],
+            Map<String, dynamic> namedArgs = const {},
+            List<HTType> typeArgs = const []}) {
+          final HTFunction func = positionalArgs.first;
+          return Future(() => func.call());
+        };
+      case 'Future.wait':
+        return (HTEntity entity,
+            {List<dynamic> positionalArgs = const [],
+            Map<String, dynamic> namedArgs = const {},
+            List<HTType> typeArgs = const []}) {
+          final futures = List<Future<dynamic>>.from(positionalArgs.first);
+          return Future.wait(futures);
+        };
+      case 'Future.value':
+        return (HTEntity entity,
+            {List<dynamic> positionalArgs = const [],
+            Map<String, dynamic> namedArgs = const {},
+            List<HTType> typeArgs = const []}) {
+          return Future.value(positionalArgs.first);
+        };
+      default:
+        throw HTError.undefined(varName);
+    }
+  }
+
+  @override
+  dynamic instanceMemberGet(dynamic object, String varName) {
+    final future = object as Future;
+    switch (varName) {
+      case 'then':
+        return (HTEntity entity,
+            {List<dynamic> positionalArgs = const [],
+            Map<String, dynamic> namedArgs = const {},
+            List<HTType> typeArgs = const []}) {
+          final HTFunction func = positionalArgs.first;
+          return future.then((value) => func.call(positionalArgs: [value]));
+        };
+      case 'catchError':
+        return (HTEntity entity,
+            {List<dynamic> positionalArgs = const [],
+            Map<String, dynamic> namedArgs = const {},
+            List<HTType> typeArgs = const []}) {
+          final HTFunction func = positionalArgs.first;
+          return future.catchError(
+              (error, stackTrace) => func.call(positionalArgs: [error]));
+        };
+      default:
+        throw HTError.undefined(varName);
+    }
+  }
+}
+

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -56,6 +57,31 @@ class SearchPage extends HookConsumerWidget {
 
       return null;
     }, []);
+
+    useEffect(() {
+      Timer? debounceTimer;
+      void listener() {
+        debounceTimer?.cancel();
+        final text = controller.text.trim();
+        if (text.isEmpty) {
+          if (ref.read(searchTermStateProvider).isNotEmpty) {
+            ref.read(searchTermStateProvider.notifier).state = "";
+          }
+          return;
+        }
+        debounceTimer = Timer(const Duration(milliseconds: 600), () {
+          if (text != ref.read(searchTermStateProvider)) {
+            ref.read(searchTermStateProvider.notifier).state = text;
+          }
+        });
+      }
+
+      controller.addListener(listener);
+      return () {
+        debounceTimer?.cancel();
+        controller.removeListener(listener);
+      };
+    }, [controller]);
 
     void onSubmitted(String value) {
       ref.read(searchTermStateProvider.notifier).state = value;
@@ -166,6 +192,7 @@ class SearchPage extends HookConsumerWidget {
                                           icon: const Icon(SpotubeIcons.close),
                                           onPressed: () {
                                             controller.clear();
+                                            ref.read(searchTermStateProvider.notifier).state = "";
                                           },
                                         ),
                                         secondChild: const SizedBox.square(

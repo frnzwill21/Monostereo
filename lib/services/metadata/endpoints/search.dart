@@ -1,6 +1,7 @@
 import 'package:hetu_script/hetu_script.dart';
 import 'package:hetu_script/values.dart';
 import 'package:spotube/models/metadata/metadata.dart';
+import 'package:spotube/services/logger/logger.dart';
 
 class MetadataPluginSearchEndpoint {
   final Hetu hetu;
@@ -40,7 +41,9 @@ class MetadataPluginSearchEndpoint {
       }
 
       return SpotubeSearchResponseObject.fromJson(raw.cast<String, dynamic>());
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.log.e("MetadataPluginSearchEndpoint.all failed",
+          error: e, stackTrace: stackTrace);
       return SpotubeSearchResponseObject(
         albums: [],
         artists: [],

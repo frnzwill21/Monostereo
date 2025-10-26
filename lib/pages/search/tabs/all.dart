@@ -2,6 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:spotube/components/fallbacks/error_box.dart';
 import 'package:spotube/components/inter_scrollbar/inter_scrollbar.dart';
+import 'package:spotube/extensions/context.dart';
 import 'package:spotube/modules/search/loading.dart';
 import 'package:spotube/pages/search/search.dart';
 import 'package:spotube/modules/search/sections/albums.dart';
@@ -29,9 +30,32 @@ class SearchPageAllTab extends HookConsumerWidget {
       );
     }
 
+    final results = searchSnapshot.asData?.value;
+    final isEmpty = results != null &&
+        results.tracks.isEmpty &&
+        results.playlists.isEmpty &&
+        results.artists.isEmpty &&
+        results.albums.isEmpty;
+
     return SearchPlaceholder(
       snapshot: searchSnapshot,
-      child: InterScrollbar(
+      child: isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Text(
+                  context.l10n.nothing_found,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .foreground
+                        .withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            )
+          : InterScrollbar(
         controller: scrollController,
         child: SingleChildScrollView(
           controller: scrollController,
