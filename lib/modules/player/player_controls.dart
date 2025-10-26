@@ -1,3 +1,4 @@
+
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -184,7 +185,7 @@ class PlayerControls extends HookConsumerWidget {
                       size: buttonSize,
                       enabled: !isFetchingActiveTrack,
                       icon: const Icon(SpotubeIcons.skipBack),
-                      onPressed: audioPlayer.skipToPrevious,
+                      onPressed: () => audioPlayer.skipToPrevious(),
                     ),
                   ),
                   Tooltip(
@@ -223,7 +224,7 @@ class PlayerControls extends HookConsumerWidget {
                       size: buttonSize,
                       icon: const Icon(SpotubeIcons.skipForward),
                       onPressed:
-                          isFetchingActiveTrack ? null : audioPlayer.skipToNext,
+                          isFetchingActiveTrack ? null : () => audioPlayer.skipToNext(),
                     ),
                   ),
                   Consumer(builder: (context, ref, _) {
