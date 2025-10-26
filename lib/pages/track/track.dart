@@ -21,6 +21,7 @@ import 'package:spotube/services/audio_player/audio_player.dart';
 
 import 'package:spotube/extensions/constrains.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:spotube/utils/platform.dart';
 
 @RoutePage()
 class TrackPage extends HookConsumerWidget {
@@ -87,7 +88,10 @@ class TrackPage extends HookConsumerWidget {
             ),
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(
+                  sigmaX: kIsMobile ? 0.001 : 10,
+                  sigmaY: kIsMobile ? 0.001 : 10,
+                ),
                 child: Skeletonizer(
                   enabled: trackQuery.isLoading,
                   child: Container(

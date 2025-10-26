@@ -109,19 +109,63 @@ class ServerPlaybackRoutes {
             .swapWithNextSibling()
             .then((track) => track.url!);
 
-    final options = Options(
-      headers: {
-        "user-agent": _randomUserAgent,
-        "Cache-Control": "max-age=3600",
-        "Connection": "keep-alive",
-        "host": Uri.parse(url).host,
-      },
-      validateStatus: (status) => status! < 400,
-    );
+    final audioType = track.qualityPreset?.name ?? "mp4";
 
-    final res = await dio.head(url, options: options);
+    // Issue lightweight range request probe or synthesize audio stream headers
+    // without issuing unsupported HEAD requests to googlevideo.com CDN nodes.
+    try {
+      final probeOptions = Options(
+        headers: {
+          "user-agent": _randomUserAgent,
+          "Cache-Control": "max-age=3600",
+          "Connection": "keep-alive",
+          "range": "bytes=0-1",
+          "host": Uri.parse(url).host,
+        },
+        responseType: ResponseType.stream,
+        validateStatus: (status) => status != null && status < 400,
+      );
 
-    return res;
+      final probeRes = await dio.get<ResponseBody>(url, options: probeOptions);
+      final contentRange = probeRes.headers.value("content-range");
+      final totalLength = (contentRange != null && contentRange.contains("/"))
+          ? contentRange.split("/").last
+          : null;
+
+      final responseHeaders = <String, List<String>>{
+        "content-type":
+            probeRes.headers.map["content-type"] ?? ["audio/$audioType"],
+        "accept-ranges": ["bytes"],
+        "connection": ["keep-alive"],
+      };
+
+      if (totalLength != null && totalLength != "*") {
+        responseHeaders["content-length"] = [totalLength];
+        responseHeaders["content-range"] =
+            ["bytes 0-$totalLength/$totalLength"];
+      }
+
+      // Close the probe stream immediately
+      probeRes.data?.stream.listen((_) {}).cancel();
+
+      return dio_lib.Response(
+        statusCode: 200,
+        headers: Headers.fromMap(responseHeaders),
+        requestOptions: RequestOptions(path: request.requestedUri.toString()),
+      );
+    } catch (e, stack) {
+      AppLogger.reportError(e, stack);
+      // Synthesize standard audio stream headers on probe failure or 403
+      return dio_lib.Response(
+        statusCode: 200,
+        headers: Headers.fromMap({
+          "content-type": ["audio/$audioType"],
+          "accept-ranges": ["bytes"],
+          "connection": ["keep-alive"],
+        }),
+        requestOptions: RequestOptions(path: request.requestedUri.toString()),
+      );
+    }
   }
 
   Future<dio_lib.Response> streamTrack(
@@ -162,38 +206,11 @@ class ServerPlaybackRoutes {
             .swapWithNextSibling()
             .then((track) => track.url!);
 
-    final options = Options(
-      headers: {
-        ...headers,
-        "user-agent": _randomUserAgent,
-        "Cache-Control": "max-age=3600",
-        "Connection": "keep-alive",
-        "host": Uri.parse(url).host,
-      },
-      responseType: ResponseType.stream,
-      validateStatus: (status) => status! < 400,
-    );
+    // Detect m3u8 playlists via URL path/query to avoid unnecessary stream requests
+    final isM3u8Url = url.contains(".m3u8") ||
+        (Uri.tryParse(url)?.path.endsWith(".m3u8") ?? false);
 
-    final contentLengthRes = await Future<dio_lib.Response?>.value(
-      dio.head(
-        url,
-        options: options.copyWith(responseType: ResponseType.bytes),
-      ),
-    ).catchError((e, stack) async {
-      AppLogger.reportError(e, stack);
-
-      final sourcedTrack = await ref
-          .read(sourcedTrackProvider(track.query).notifier)
-          .refreshStreamingUrl();
-
-      url = sourcedTrack.url!;
-
-      return dio.head(url, options: options);
-    });
-
-    // Redirect to m3u8 link directly as it handles range requests internally
-    if (contentLengthRes?.headers.value("content-type") ==
-        "application/vnd.apple.mpegurl") {
+    if (isM3u8Url) {
       return dio_lib.Response<Uint8List>(
         statusCode: 301,
         statusMessage: "M3U8 Redirect",
@@ -206,7 +223,52 @@ class ServerPlaybackRoutes {
       );
     }
 
-    final res = await dio.get<ResponseBody>(url, options: options);
+    final options = Options(
+      headers: {
+        ...headers,
+        "user-agent": _randomUserAgent,
+        "Cache-Control": "max-age=3600",
+        "Connection": "keep-alive",
+        "host": Uri.parse(url).host,
+      },
+      responseType: ResponseType.stream,
+      validateStatus: (status) => status! < 400,
+    );
+
+    dio_lib.Response<ResponseBody> res;
+    try {
+      res = await dio.get<ResponseBody>(url, options: options);
+    } catch (e, stack) {
+      AppLogger.reportError(e, stack);
+
+      final sourcedTrack = await ref
+          .read(sourcedTrackProvider(track.query).notifier)
+          .refreshStreamingUrl();
+
+      url = sourcedTrack.url!;
+
+      final retryOptions = options.copyWith(
+        headers: {
+          ...?options.headers,
+          "host": Uri.parse(url).host,
+        },
+      );
+      res = await dio.get<ResponseBody>(url, options: retryOptions);
+    }
+
+    // Redirect to m3u8 link directly if detected in response headers
+    if (res.headers.value("content-type") == "application/vnd.apple.mpegurl") {
+      return dio_lib.Response<Uint8List>(
+        statusCode: 301,
+        statusMessage: "M3U8 Redirect",
+        headers: Headers.fromMap({
+          "location": [url],
+          "content-type": ["application/vnd.apple.mpegurl"],
+        }),
+        requestOptions: RequestOptions(path: request.requestedUri.toString()),
+        isRedirect: true,
+      );
+    }
 
     AppLogger.log.i(
       "Response for track: ${track.query.name}\n"

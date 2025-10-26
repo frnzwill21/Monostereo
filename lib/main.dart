@@ -84,6 +84,10 @@ Future<void> main(List<String> rawArgs) async {
     if (kIsAndroid) {
       await FlutterDisplayMode.setHighRefreshRate();
     }
+    if (kIsMobile) {
+      PaintingBinding.instance.imageCache.maximumSize = 100;
+      PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
+    }
     if (kIsAndroid || kIsDesktop) {
       await NewPipeExtractor.init();
     }
@@ -222,8 +226,8 @@ class Monostereo extends HookConsumerWidget {
         colorScheme:
             colorSchemeMap[accentMaterialColor.name]?.call(ThemeMode.light) ??
                 LegacyColorSchemes.lightSlate(),
-        surfaceOpacity: .8,
-        surfaceBlur: 10,
+        surfaceOpacity: kIsMobile ? 1.0 : .8,
+        surfaceBlur: kIsMobile ? 0 : 10,
       ),
       darkTheme: ThemeData(
         radius: .5,
@@ -231,8 +235,8 @@ class Monostereo extends HookConsumerWidget {
         colorScheme:
             colorSchemeMap[accentMaterialColor.name]?.call(ThemeMode.dark) ??
                 LegacyColorSchemes.darkSlate(),
-        surfaceOpacity: .8,
-        surfaceBlur: 10,
+        surfaceOpacity: kIsMobile ? 1.0 : .8,
+        surfaceBlur: kIsMobile ? 0 : 10,
       ),
       materialTheme: material.ThemeData(
         brightness: switch (themeMode) {

@@ -89,7 +89,8 @@ class TrackTile extends HookConsumerWidget {
     // disable inner navigation in both cases.
     final effectiveSelection = selectionMode || onChanged != null;
 
-    return LayoutBuilder(builder: (context, constrains) {
+    return RepaintBoundary(
+      child: LayoutBuilder(builder: (context, constrains) {
       return Listener(
         onPointerDown: (event) {
           if (event.buttons != kSecondaryMouseButton) return;
@@ -342,6 +343,7 @@ class TrackTile extends HookConsumerWidget {
           ),
         ),
       );
-    });
+    }),
+  );
   }
 }
