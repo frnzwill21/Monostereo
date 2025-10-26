@@ -67,8 +67,8 @@ Future<void> main(List<String> rawArgs) async {
 
   AppLogger.runZoned(() async {
     final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-    widgetsBinding.imageCache.maximumSize = 100;
-    widgetsBinding.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
+    PaintingBinding.instance.imageCache.maximumSize = 100;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
 
     HttpOverrides.global = BadCertificateAllowlistOverrides();
 
