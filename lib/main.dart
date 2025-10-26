@@ -67,6 +67,8 @@ Future<void> main(List<String> rawArgs) async {
 
   AppLogger.runZoned(() async {
     final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+    widgetsBinding.imageCache.maximumSize = 100;
+    widgetsBinding.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
 
     HttpOverrides.global = BadCertificateAllowlistOverrides();
 
@@ -83,10 +85,6 @@ Future<void> main(List<String> rawArgs) async {
     // force High Refresh Rate on some Android devices (like One Plus)
     if (kIsAndroid) {
       await FlutterDisplayMode.setHighRefreshRate();
-    }
-    if (kIsMobile) {
-      PaintingBinding.instance.imageCache.maximumSize = 100;
-      PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
     }
     if (kIsAndroid || kIsDesktop) {
       await NewPipeExtractor.init();
@@ -226,8 +224,8 @@ class Monostereo extends HookConsumerWidget {
         colorScheme:
             colorSchemeMap[accentMaterialColor.name]?.call(ThemeMode.light) ??
                 LegacyColorSchemes.lightSlate(),
-        surfaceOpacity: kIsMobile ? 1.0 : .8,
-        surfaceBlur: kIsMobile ? 0 : 10,
+        surfaceOpacity: kIsDesktop ? .8 : 1.0,
+        surfaceBlur: kIsDesktop ? 10 : 0,
       ),
       darkTheme: ThemeData(
         radius: .5,
@@ -235,8 +233,8 @@ class Monostereo extends HookConsumerWidget {
         colorScheme:
             colorSchemeMap[accentMaterialColor.name]?.call(ThemeMode.dark) ??
                 LegacyColorSchemes.darkSlate(),
-        surfaceOpacity: kIsMobile ? 1.0 : .8,
-        surfaceBlur: kIsMobile ? 0 : 10,
+        surfaceOpacity: kIsDesktop ? .8 : 1.0,
+        surfaceBlur: kIsDesktop ? 10 : 0,
       ),
       materialTheme: material.ThemeData(
         brightness: switch (themeMode) {

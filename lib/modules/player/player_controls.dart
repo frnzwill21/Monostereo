@@ -68,75 +68,77 @@ class PlayerControls extends HookConsumerWidget {
           child: Column(
             children: [
               if (!compact)
-                HookBuilder(
-                  builder: (context) {
-                    final mediaQuery = MediaQuery.sizeOf(context);
+                RepaintBoundary(
+                  child: HookBuilder(
+                    builder: (context) {
+                      final mediaQuery = MediaQuery.sizeOf(context);
 
-                    final (
-                      :bufferProgress,
-                      :duration,
-                      :position,
-                      :progressStatic
-                    ) = useProgress(ref);
+                      final (
+                        :bufferProgress,
+                        :duration,
+                        :position,
+                        :progressStatic
+                      ) = useProgress(ref);
 
-                    final progress = useState<num>(
-                      useMemoized(() => progressStatic, []),
-                    );
+                      final progress = useState<num>(
+                        useMemoized(() => progressStatic, []),
+                      );
 
-                    useEffect(() {
-                      progress.value = progressStatic;
-                      return null;
-                    }, [progressStatic]);
+                      useEffect(() {
+                        progress.value = progressStatic;
+                        return null;
+                      }, [progressStatic]);
 
-                    return Column(
-                      children: [
-                        Tooltip(
-                          tooltip: TooltipContainer(
-                            child: Text(context.l10n.slide_to_seek),
-                          ).call,
-                          child: SizedBox(
-                            width: mediaQuery.xlAndUp ? 600 : 500,
-                            child: Slider(
-                              hintValue: SliderValue.single(bufferProgress),
-                              value:
-                                  SliderValue.single(progress.value.toDouble()),
-                              onChanged: isFetchingActiveTrack
-                                  ? null
-                                  : (v) {
-                                      progress.value = v.value;
-                                    },
-                              onChangeEnd: (value) async {
-                                await audioPlayer.seek(
-                                  Duration(
-                                    seconds: (value.value * duration.inSeconds)
-                                        .toInt(),
-                                  ),
-                                );
-                              },
+                      return Column(
+                        children: [
+                          Tooltip(
+                            tooltip: TooltipContainer(
+                              child: Text(context.l10n.slide_to_seek),
+                            ).call,
+                            child: SizedBox(
+                              width: mediaQuery.xlAndUp ? 600 : 500,
+                              child: Slider(
+                                hintValue: SliderValue.single(bufferProgress),
+                                value:
+                                    SliderValue.single(progress.value.toDouble()),
+                                onChanged: isFetchingActiveTrack
+                                    ? null
+                                    : (v) {
+                                        progress.value = v.value;
+                                      },
+                                onChangeEnd: (value) async {
+                                  await audioPlayer.seek(
+                                    Duration(
+                                      seconds: (value.value * duration.inSeconds)
+                                          .toInt(),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8.0,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  position.toHumanReadableString(),
+                                  style: theme.typography.xSmall,
+                                ),
+                                Text(
+                                  duration.toHumanReadableString(),
+                                  style: theme.typography.xSmall,
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                position.toHumanReadableString(),
-                                style: theme.typography.xSmall,
-                              ),
-                              Text(
-                                duration.toHumanReadableString(),
-                                style: theme.typography.xSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      );
+                    },
+                  ),
                 ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
